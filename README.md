@@ -1,53 +1,64 @@
-# MiniPanel
+# MiniPanel v0.4.0
 
 面向 Debian 12 / 13（amd64 / x86_64）的轻量中文服务器管理面板。
 
 - 直接安装到系统，通过 `https://服务器IP:8888` 登录后台。
 - 一键原生安装 Nginx、PHP-FPM、Oracle MySQL 8.4 LTS。
-- 添加域名并自动创建网站目录和 Nginx 配置。
+- 域名可指定网站目录；已有网站可修改目录，保留原文件和 SSL 设置。
+- 文件管理从系统 `/` 浏览目录，支持路径跳转、返回、上一级、新建空文件/文件夹、上传下载、多选、解压、删除。
+- 面板设置中修改管理员密码，验证原密码后保存，并退出所有旧登录。
 - 网站暂停/恢复、服务重启、安装日志、MySQL 数据库与独立账号。
-- 点击网站目录管理文件，支持子目录、新建文件夹、流式上传与下载。
-- 网站域名自签名 SSL，独立的强制 HTTPS 开关；面板后台也使用 HTTPS。
-- PHP、Nginx 和面板文件传输不设固定文件大小上限，适合网盘用途。
+- 域名自签名 SSL、独立强制 HTTPS 开关；后台登录也使用 HTTPS。
+- PHP、Nginx 和面板文件传输不设固定文件大小上限。
 
-这是公开仓库，安装包和源码可直接下载，无需 GitHub 登录或 Token。
+这是公开仓库，源码和安装包可直接下载，无需 GitHub 登录或 Token。
 
 ## 一键安装 / 升级
 
-在 Debian 12 / 13 amd64 的 root 终端执行：
+在 Debian 12 / 13 amd64 的 **root 终端**执行：
 
 ```bash
-bash -c 'set -euo pipefail; [[ $EUID -eq 0 ]] || { echo "请使用 root 执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y curl ca-certificates; f=$(mktemp); trap '"'"'rm -f -- "$f"'"'"' EXIT; curl -fsSL --retry 3 --proto '"'"'=https'"'"' --proto-redir '"'"'=https'"'"' https://raw.githubusercontent.com/zgahxd/minipanel/main/install-online.sh -o "$f"; printf "%s  %s\n" "d56b3e7d6ad011051648ad26b3cd0568f60ed22cc988a8443928ba9ded206265" "$f" | sha256sum --check --status; bash "$f"'
+bash -c 'set -euo pipefail; [[ $EUID -eq 0 ]] || { echo "请使用 root 执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y curl ca-certificates; f=$(mktemp); trap '"'"'rm -f -- "$f"'"'"' EXIT; curl -fsSL --retry 3 --proto '"'"'=https'"'"' --proto-redir '"'"'=https'"'"' https://raw.githubusercontent.com/zgahxd/minipanel/main/install-online.sh -o "$f"; printf "%s  %s\n" "e4eded98699d46f596e99af031209b620ebf721684080b02ae9fe6bdc4b76249" "$f" | sha256sum --check --status; bash "$f"'
 ```
 
-也可以复制仓库中的 `one-line-install.txt`。命令使用 HTTPS 下载脚本、校验脚本 SHA256，再下载安装固定的 v0.3.0 安装包并校验其 SHA256。无需 GitHub CLI 或 Token。
+也可以复制 `one-line-install.txt`。命令通过 HTTPS 下载脚本并校验 SHA256，再下载固定的 **v0.4.0** 安装包并校验 SHA256。无需 GitHub CLI 或 Token。
 
-已安装服务器执行同一命令可更新面板代码并重启面板；保留账号、网站与数据库。正在上传或解压时不要升级。旧版本归档里的私有下载说明已过时，以这里的公开安装命令为准。
+**已有服务器：直接执行同一命令升级，不需要重装系统。** 保留管理员密码、网站文件与记录、数据库数据与记录及现有证书。面板会短暂重启，需重新登录；安装脚本不重新安装 Nginx/PHP/MySQL，也不重写已有网站配置。无需重新添加网站。升级前请保存重要数据备份；上传、解压或安装任务进行中不要升级。
 
 ## 登录与使用
 
-安装完成后，访问 `https://服务器公网IP:8888`。账号 `admin`，随机初始密码由安装脚本输出，并保存在服务器 `/root/minipanel-login.txt`。
+访问 `https://服务器公网IP:8888`，账号 `admin`。新安装随机初始密码由安装脚本输出，保存在 `/root/minipanel-login.txt`。升级仍使用原来的密码。
 
-放行 TCP 8888，网站另需放行 TCP 80；启用域名 SSL 时也要放行 TCP 443。后台默认生成自签名证书，安装输出提供证书指纹，可按包内说明替换为有效证书。
+面板设置 → 修改管理员密码：输入原密码及两遍新密码（12–256 个字符）。修改后旧会话全部退出，新密码在重启/升级后保留；初始密码文件不会同步更新。忘记密码可在服务器执行：
 
-登录后台后点击“一键安装环境”，完成后添加域名，再去域名服务商设置 A 记录指向服务器公网 IP。
+```bash
+sudo python3 /opt/minipanel/reset-password.py
+```
+
+放行 TCP 8888；网站需要 TCP 80，启用域名 SSL 还需 TCP 443。新服务器登录后点击「一键安装环境」，成功后添加域名，并在域名服务商设置 A 记录指向服务器公网 IP。
+
+## 网站目录与文件管理
+
+新网站默认目录为 `/var/www/minipanel/域名/public`，可改为 `/srv/www/pan/public` 或挂载数据盘下的路径。已有网站点击「修改目录」更改指向；不会搬移或覆盖原目录文件。已有目录需确保 www-data 可读取和进入，上传还需写权限。系统盘或数据盘由 Linux 实际挂载位置决定。
+
+点击网站目录直接打开文件管理，也可从 `/` 浏览系统目录。新建文件为空文件，暂不支持在线编辑内容。上传默认不覆盖；ZIP/TAR/TGZ 等解压到新文件夹，拒绝不安全压缩路径、链接和已有目标目录，暂不支持 RAR、7z 或加密包。删除前显示完整路径；文件夹递归删除，**无回收站，无法撤销**，中途失败可能已删除部分内容。
+
+网站目录操作使用 www-data，其余系统目录由 root 助手执行，适合单一可信管理员。符号链接、设备和运行时虚拟目录不开放访问；面板认证及内部文件受保护；系统关键目录、活动网站根目录及其上级目录不能删除。目录最多列出 5000 项，压缩包最多 10000 个条目。
+
+## SSL 与大文件
+
+域名 SSL 与后台 SSL 是独立设置。目前生成的是**自签名证书**，浏览器会显示不受信任提示；本版没有自动申请/续期 Let's Encrypt 证书。强制 HTTPS 可以单独开关，需先启用域名 SSL。
+
+文件采用流式传输，不在内存保存整个上传文件。实际大小仍受磁盘、网盘程序、浏览器、CDN 等限制；不支持断点续传。
 
 ## 验证范围
 
-30 项本地测试通过，浏览器模拟流程已验证。真实 Debian 安装、systemd、公网 TLS 与 Nginx/PHP/MySQL 实际链路仍需在空白服务器验收。完整源码、测试和中文说明都在安装包中。
+共 42 项自动测试：**40 项通过，2 项 Linux 原生文件系统测试在 Windows 跳过**。本地浏览器流程已验证，用户试用确认后发布。真实 Debian 12/13 安装、升级、systemd、文件权限、公网 TLS 与 Nginx/PHP/MySQL 实际链路仍需实机验收。完整源码、测试、中文说明与验收清单均在安装包中。
 
 ## 文件
 
 - `install-online.sh`：在线下载与校验安装器。
-- `one-line-install.txt`：可直接复制到服务器的安装命令。
+- `one-line-install.txt`：可复制到服务器的安装/升级命令。
 - `minipanel.tar.gz`：Linux 安装包（含源码）。
 - `minipanel.zip`：相同内容的 ZIP 源码包。
-- `SHA256SUMS`：Linux 安装包校验值。
-
-
-
-实际上传仍受磁盘容量、网盘程序自身设置及 CDN 等外部服务限制。大文件通过流式传输控制内存占用，不提供断点续传。
-
-### v0.3 文件管理更新
-
-支持勾选、多选、全选、下载选中文件；单选 ZIP/TAR/TGZ 等压缩包后解压到新文件夹，完成后自动进入。增加返回、上一级和路径导航。目标目录不能已存在；暂不支持 RAR、7z、加密包。30 项测试通过，1 项 Linux 文件系统集成测试在 Windows 跳过，仍需 Debian 验收。
+- `SHA256SUMS`：两个安装包的 SHA256 校验值。
