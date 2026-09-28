@@ -1,4 +1,4 @@
-# MiniPanel v0.4.0
+# MiniPanel v0.4.1
 
 面向 Debian 12 / 13（amd64 / x86_64）的轻量中文服务器管理面板。
 
@@ -18,18 +18,24 @@
 在 Debian 12 / 13 amd64 的 **root 终端**执行：
 
 ```bash
-bash -c 'set -euo pipefail; [[ $EUID -eq 0 ]] || { echo "请使用 root 执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y curl ca-certificates; f=$(mktemp); trap '"'"'rm -f -- "$f"'"'"' EXIT; curl -fsSL --retry 3 --proto '"'"'=https'"'"' --proto-redir '"'"'=https'"'"' https://raw.githubusercontent.com/zgahxd/minipanel/main/install-online.sh -o "$f"; printf "%s  %s\n" "e4eded98699d46f596e99af031209b620ebf721684080b02ae9fe6bdc4b76249" "$f" | sha256sum --check --status; bash "$f"'
+bash -c 'set -euo pipefail; [[ $EUID -eq 0 ]] || { echo "请使用 root 执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y curl ca-certificates; f=$(mktemp); trap '"'"'rm -f -- "$f"'"'"' EXIT; curl -fsSL --retry 3 --proto '"'"'=https'"'"' --proto-redir '"'"'=https'"'"' https://raw.githubusercontent.com/zgahxd/minipanel/main/install-online.sh -o "$f"; printf "%s  %s\n" "95a32c691c8e663bd307a748472050765a58ba6b50e9a4b6dba4de173e657ed9" "$f" | sha256sum --check --status; bash "$f"'
 ```
 
-也可以复制 `one-line-install.txt`。命令通过 HTTPS 下载脚本并校验 SHA256，再下载固定的 **v0.4.0** 安装包并校验 SHA256。无需 GitHub CLI 或 Token。
+也可以复制 `one-line-install.txt`。命令通过 HTTPS 下载脚本并校验 SHA256，再下载固定的 **v0.4.1** 安装包并校验 SHA256。无需 GitHub CLI 或 Token。
 
 **已有服务器：直接执行同一命令升级，不需要重装系统。** 保留管理员密码、网站文件与记录、数据库数据与记录及现有证书。面板会短暂重启，需重新登录；安装脚本不重新安装 Nginx/PHP/MySQL，也不重写已有网站配置。无需重新添加网站。升级前请保存重要数据备份；上传、解压或安装任务进行中不要升级。
+
+## v0.4.1 更新
+
+- 取消管理员密码至少 12 位的限制，前端、后端和 SSH 重置工具统一支持自定义非空密码（最多 256 个字符）。
+- 安装完成时在终端直接显示初始账号密码，后台「安装日志」页也可以查看仍有效的初始信息。
+- 修改密码后不再显示旧初始密码；自定义密码只保存散列，不在日志中显示。初始信息仅供登录后的管理员读取，不进入普通状态或环境安装任务日志。
 
 ## 登录与使用
 
 访问 `https://服务器公网IP:8888`，账号 `admin`。新安装随机初始密码由安装脚本输出，保存在 `/root/minipanel-login.txt`。升级仍使用原来的密码。
 
-面板设置 → 修改管理员密码：输入原密码及两遍新密码（12–256 个字符）。修改后旧会话全部退出，新密码在重启/升级后保留；初始密码文件不会同步更新。忘记密码可在服务器执行：
+面板设置 → 修改管理员密码：输入原密码及两遍新密码（可自定义长度，非空、最多 256 个字符）。修改后旧会话全部退出，新密码在重启/升级后保留；初始密码文件不会同步更新。忘记密码可在服务器执行：
 
 ```bash
 sudo python3 /opt/minipanel/reset-password.py
@@ -53,7 +59,7 @@ sudo python3 /opt/minipanel/reset-password.py
 
 ## 验证范围
 
-共 42 项自动测试：**40 项通过，2 项 Linux 原生文件系统测试在 Windows 跳过**。本地浏览器流程已验证，用户试用确认后发布。真实 Debian 12/13 安装、升级、systemd、文件权限、公网 TLS 与 Nginx/PHP/MySQL 实际链路仍需实机验收。完整源码、测试、中文说明与验收清单均在安装包中。
+共 46 项自动测试：**44 项通过，2 项 Linux 原生文件系统测试在 Windows 跳过**。本地浏览器流程已验证，用户试用确认后发布。真实 Debian 12/13 安装、升级、systemd、文件权限、公网 TLS 与 Nginx/PHP/MySQL 实际链路仍需实机验收。完整源码、测试、中文说明与验收清单均在安装包中。
 
 ## 文件
 
