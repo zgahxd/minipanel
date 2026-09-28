@@ -21,7 +21,7 @@
 复制下面这一条命令执行：
 
 ```bash
-bash -c 'set -euo pipefail; set +x; umask 077; [[ $EUID -eq 0 ]] || { echo "请在 Debian 的 root 终端执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y gh ca-certificates; bootstrap=$(mktemp /tmp/minipanel-bootstrap.XXXXXXXX); trap '"'"'unset GH_TOKEN; rm -f -- "$bootstrap"'"'"' EXIT; if [[ -z ${GH_TOKEN:-} ]] && ! gh auth status --hostname github.com >/dev/null 2>&1; then read -r -s -p "GitHub 只读 Token（输入不显示）：" GH_TOKEN </dev/tty; echo; [[ -n $GH_TOKEN ]] || exit 1; export GH_TOKEN; fi; gh api --hostname github.com -H "Accept: application/vnd.github.raw+json" "repos/zgahxd/minipanel/contents/install-online.sh?ref=main" > "$bootstrap"; printf "%s  %s\n" "0c894b6b25501499554a1aa315b7480d36d7786ebe37a24e5f130a018f2763d3" "$bootstrap" | sha256sum --check --status; bash "$bootstrap";'
+bash -c 'set -euo pipefail; set +x; umask 077; [[ $EUID -eq 0 ]] || { echo "请在 Debian 的 root 终端执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y gh ca-certificates; bootstrap=$(mktemp /tmp/minipanel-bootstrap.XXXXXXXX); trap '"'"'unset GH_TOKEN; rm -f -- "$bootstrap"'"'"' EXIT; if [[ -z ${GH_TOKEN:-} ]] && ! gh auth status --hostname github.com >/dev/null 2>&1; then read -r -s -p "GitHub 只读 Token（输入不显示）：" GH_TOKEN </dev/tty; echo; [[ -n $GH_TOKEN ]] || exit 1; export GH_TOKEN; fi; gh api --hostname github.com -H "Accept: application/vnd.github.raw+json" "repos/zgahxd/minipanel/contents/install-online.sh?ref=v0.3.0" > "$bootstrap"; printf "%s  %s\n" "3f497568ba5237d96c93fe4b7ff27de801516974d8b9f76d126369f3e60e6940" "$bootstrap" | sha256sum --check --status; bash "$bootstrap";'
 ```
 
 也可以复制仓库中的 `one-line-install.txt` 内容执行。命令会安装下载依赖，提示输入 Token，然后下载带校验的一键安装脚本。已有 `GH_TOKEN` 环境变量时无需重复输入。
@@ -34,7 +34,7 @@ bash -c 'set -euo pipefail; set +x; umask 077; [[ $EUID -eq 0 ]] || { echo "请�
 bash install-online.sh
 ```
 
-脚本下载固定版本 `v0.2.0`，核对安装包的固定 SHA256，再执行包内的系统安装程序。安装完成后面板无需访问 GitHub；再次下载或更新私有安装包才需要授权。
+脚本下载固定版本 `v0.3.0`，核对安装包的固定 SHA256，再执行包内的系统安装程序。安装完成后面板无需访问 GitHub；再次下载或更新私有安装包才需要授权。
 
 ## 登录与使用
 
@@ -46,7 +46,7 @@ bash install-online.sh
 
 ## 验证范围
 
-23 项本地测试通过，浏览器模拟流程已验证。真实 Debian 安装、systemd、公网 TLS 与 Nginx/PHP/MySQL 实际链路仍需在空白服务器验收。完整源码、测试和中文说明都在安装包中。
+30 项本地测试通过，浏览器模拟流程已验证。真实 Debian 安装、systemd、公网 TLS 与 Nginx/PHP/MySQL 实际链路仍需在空白服务器验收。完整源码、测试和中文说明都在安装包中。
 
 ## 文件
 
@@ -59,3 +59,7 @@ bash install-online.sh
 [GitHub 私有 Release 下载文档](https://docs.github.com/en/rest/releases/assets)
 
 实际上传仍受磁盘容量、网盘程序自身设置及 CDN 等外部服务限制。大文件通过流式传输控制内存占用，不提供断点续传。
+
+### v0.3 文件管理更新
+
+支持勾选、多选、全选、下载选中文件；单选 ZIP/TAR/TGZ 等压缩包后解压到新文件夹，完成后自动进入。增加返回、上一级和路径导航。目标目录不能已存在；暂不支持 RAR、7z、加密包。30 项测试通过，1 项 Linux 文件系统集成测试在 Windows 跳过，仍需 Debian 验收。

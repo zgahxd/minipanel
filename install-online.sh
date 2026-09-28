@@ -10,7 +10,7 @@ source /etc/os-release
 [[ $(dpkg --print-architecture) == amd64 ]] || { echo '仅支持 amd64 / x86_64'; exit 1; }
 
 repo='zgahxd/minipanel'
-version='v0.2.0'
+version='v0.3.0'
 download_dir=$(mktemp -d /tmp/minipanel-download.XXXXXXXX)
 cleanup() { unset GH_TOKEN; rm -rf -- "$download_dir"; }
 trap cleanup EXIT
@@ -33,7 +33,7 @@ gh release download "$version" --repo "$repo" \
     --pattern minipanel.tar.gz --pattern SHA256SUMS --dir "$download_dir"
 
 # This checksum is pinned to the packaged release, not downloaded as a trust root.
-expected_sha256='80906c32e050fd406abee2556182ad82c01a181a6239dd84d3203d7e83c8ae25'
+expected_sha256='eb04ef330158481d29045942e0ca67b82ab73947e2ce6367654c1f646d32a279'
 printf '%s  %s\n' "$expected_sha256" "$download_dir/minipanel.tar.gz" | sha256sum --check --status
 echo '安装包 SHA256 校验通过。'
 tar -xzf "$download_dir/minipanel.tar.gz" -C "$download_dir"
