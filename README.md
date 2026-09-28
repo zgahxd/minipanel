@@ -10,31 +10,19 @@
 - 网站域名自签名 SSL，独立的强制 HTTPS 开关；面板后台也使用 HTTPS。
 - PHP、Nginx 和面板文件传输不设固定文件大小上限，适合网盘用途。
 
-这是私有仓库。安装包位于 Releases，未经授权的下载请求可能返回 404；这不代表文件不存在。
+这是公开仓库，安装包和源码可直接下载，无需 GitHub 登录或 Token。
 
-## 私有仓库安装
+## 一键安装 / 升级
 
-使用拥有此仓库读取权限的 GitHub 账号授权，或使用仅选中本仓库、具有 **Contents: Read-only** 权限的 fine-grained Personal Access Token。Token 只在服务器终端输入，不要发到聊天、写进脚本或仓库。
-
-### 一键安装（在 Debian 的 root 终端执行）
-
-复制下面这一条命令执行：
+在 Debian 12 / 13 amd64 的 root 终端执行：
 
 ```bash
-bash -c 'set -euo pipefail; set +x; umask 077; [[ $EUID -eq 0 ]] || { echo "请在 Debian 的 root 终端执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y gh ca-certificates; bootstrap=$(mktemp /tmp/minipanel-bootstrap.XXXXXXXX); trap '"'"'unset GH_TOKEN; rm -f -- "$bootstrap"'"'"' EXIT; if [[ -z ${GH_TOKEN:-} ]] && ! gh auth status --hostname github.com >/dev/null 2>&1; then read -r -s -p "GitHub 只读 Token（输入不显示）：" GH_TOKEN </dev/tty; echo; [[ -n $GH_TOKEN ]] || exit 1; export GH_TOKEN; fi; gh api --hostname github.com -H "Accept: application/vnd.github.raw+json" "repos/zgahxd/minipanel/contents/install-online.sh?ref=v0.3.0" > "$bootstrap"; printf "%s  %s\n" "3f497568ba5237d96c93fe4b7ff27de801516974d8b9f76d126369f3e60e6940" "$bootstrap" | sha256sum --check --status; bash "$bootstrap";'
+bash -c 'set -euo pipefail; [[ $EUID -eq 0 ]] || { echo "请使用 root 执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y curl ca-certificates; f=$(mktemp); trap '"'"'rm -f -- "$f"'"'"' EXIT; curl -fsSL --retry 3 --proto '"'"'=https'"'"' --proto-redir '"'"'=https'"'"' https://raw.githubusercontent.com/zgahxd/minipanel/main/install-online.sh -o "$f"; printf "%s  %s\n" "d56b3e7d6ad011051648ad26b3cd0568f60ed22cc988a8443928ba9ded206265" "$f" | sha256sum --check --status; bash "$f"'
 ```
 
-也可以复制仓库中的 `one-line-install.txt` 内容执行。命令会安装下载依赖，提示输入 Token，然后下载带校验的一键安装脚本。已有 `GH_TOKEN` 环境变量时无需重复输入。
+也可以复制仓库中的 `one-line-install.txt`。命令使用 HTTPS 下载脚本、校验脚本 SHA256，再下载安装固定的 v0.3.0 安装包并校验其 SHA256。无需 GitHub CLI 或 Token。
 
-### 已配置 GitHub CLI 授权的服务器
-
-下载 `install-online.sh` 后，在 root 终端执行：
-
-```bash
-bash install-online.sh
-```
-
-脚本下载固定版本 `v0.3.0`，核对安装包的固定 SHA256，再执行包内的系统安装程序。安装完成后面板无需访问 GitHub；再次下载或更新私有安装包才需要授权。
+已安装服务器执行同一命令可更新面板代码并重启面板；保留账号、网站与数据库。正在上传或解压时不要升级。旧版本归档里的私有下载说明已过时，以这里的公开安装命令为准。
 
 ## 登录与使用
 
@@ -56,7 +44,7 @@ bash install-online.sh
 - `minipanel.zip`：相同内容的 ZIP 源码包。
 - `SHA256SUMS`：Linux 安装包校验值。
 
-[GitHub 私有 Release 下载文档](https://docs.github.com/en/rest/releases/assets)
+
 
 实际上传仍受磁盘容量、网盘程序自身设置及 CDN 等外部服务限制。大文件通过流式传输控制内存占用，不提供断点续传。
 
