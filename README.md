@@ -1,4 +1,4 @@
-# MiniPanel v0.5.0
+# MiniPanel v0.6.0
 
 面向 Debian 12 / 13（amd64 / x86_64）的轻量中文服务器管理面板。
 
@@ -13,19 +13,29 @@
 
 这是公开仓库，源码和安装包可直接下载，无需 GitHub 登录或 Token。
 
+## v0.6.0 更新
+
+- 修复刷新时先闪现登录页面；会话检查失败显示重新连接，只有确认未登录时才显示登录表单。
+- 网站新增删除域名配置（保留网站目录、证书和数据库）；删除后停止面板为该域名续期。
+- 网站新增 URL Rewrite / 伪静态编辑与模板，Nginx 校验失败恢复原配置，暂停、SSL 和目录变更保留规则。
+- MySQL 新增删除数据库及账号、SQL 导出和导入；删除/导入需确认目标库名。
+- 常用 PHP 扩展明确安装并检查 PHP-FPM 加载状态；SG 可随环境一起安装，也可单独补装。
+- 网站 SSL 表单只提供 Let’s Encrypt，移除“测试用途 · 不自动续期”自签名选项；已有证书保留到新证书成功申请。后台 IP 自签名自动换新继续保留。
+
+
 ## 一键安装 / 升级
 
 在 Debian 12 / 13 amd64 的 **root 终端**执行：
 
 ```bash
-bash -c 'set -euo pipefail; [[ $EUID -eq 0 ]] || { echo "请使用 root 执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y curl ca-certificates; f=$(mktemp); trap '"'"'rm -f -- "$f"'"'"' EXIT; curl -fsSL --retry 3 --proto '"'"'=https'"'"' --proto-redir '"'"'=https'"'"' https://raw.githubusercontent.com/zgahxd/minipanel/main/install-online.sh -o "$f"; printf "%s  %s\n" "9fec33ab0d493ca4d80b21bab63dfea00ddf47fbbfe41c9dcdf4ae181871d5f0" "$f" | sha256sum --check --status; bash "$f"'
+bash -c 'set -euo pipefail; [[ $EUID -eq 0 ]] || { echo "请使用 root 执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y curl ca-certificates; f=$(mktemp); trap '"'"'rm -f -- "$f"'"'"' EXIT; curl -fsSL --retry 3 --proto '"'"'=https'"'"' --proto-redir '"'"'=https'"'"' https://raw.githubusercontent.com/zgahxd/minipanel/main/install-online.sh -o "$f"; printf "%s  %s\n" "f623a7fa54638039c9068ddddf819d0449fe5eec9da24b700d3fc47220d210f5" "$f" | sha256sum --check --status; bash "$f"'
 ```
 
-也可以复制 `one-line-install.txt`。命令通过 HTTPS 下载脚本并校验 SHA256，再下载固定的 **v0.5.0** 安装包并校验 SHA256。无需 GitHub CLI 或 Token。
+也可以复制 `one-line-install.txt`。命令通过 HTTPS 下载脚本并校验 SHA256，再下载固定的 **v0.6.0** 安装包并校验 SHA256。无需 GitHub CLI 或 Token。
 
 **已有服务器：直接执行同一命令升级，不需要重装系统。** 保留管理员密码、网站文件与记录、数据库数据与记录及现有证书。面板会短暂重启，需重新登录；安装脚本不重新安装 Nginx/PHP/MySQL，也不重写已有网站配置。无需重新添加网站。升级前请保存重要数据备份；上传、解压或安装任务进行中不要升级。
 
-## v0.5.0 更新
+## v0.5.0 历史更新
 
 - 域名可信证书申请、每日两次续期检查、续期后 Nginx 验证和加载、失败状态及重试。
 - 后台自签名证书剩余 30 天自动换新，设置页显示到期和检查结果，不替换外部证书。
@@ -65,10 +75,10 @@ sudo python3 /opt/minipanel/reset-password.py
 
 网站与后台的证书独立管理：
 
-- **网站域名**：网站 → SSL 设置 → 选择「Let’s Encrypt」，填写邮箱并阅读/同意服务协议后保存。域名 A/AAAA 必须指向本机，公网 TCP 80 必须可达，HTTPS 放行 TCP 443。申请失败会保留原网站配置；已有自签名证书不会只因升级就自动变成可信证书，需要首次手动申请。
+- **网站域名**：网站 → SSL 设置 → 使用 Let’s Encrypt，填写邮箱并阅读/同意服务协议后保存。域名 A/AAAA 必须指向本机，公网 TCP 80 必须可达，HTTPS 放行 TCP 443。申请失败会保留原网站配置；已有自签名证书不会只因升级就自动变成可信证书，需要首次手动申请。
 - **域名自动续期**：安装启用 `minipanel-renew.timer`，每天 00:00、12:00（服务器时区）各检查一次，附加最多 1 小时随机延迟。Certbot 按其续期窗口决定是否签发，未到窗口不会重复签发。新证书通过 `nginx -t` 后自动重新加载；失败记录原因并重试。强制 HTTPS 与暂停网站均保留 HTTP 验证路径。
 - **后台 IP 自签名证书**：同一定时任务每天两次检查，剩余有效期不超过 30 天时换成新的 365 天证书，保留原 SAN 和私钥，重新加载后台。加载失败恢复原证书。浏览器仍会提示不受信任，新指纹会变化，后台会话可能需要重新登录。面板设置显示到期和检查结果；外部证书不自动覆盖。
-- 域名仍可选择自签名证书（365 天、浏览器有提示，此类网站自签名证书不自动续期）。后台自签名自动换新与网站 Let's Encrypt 自动续期是两项独立能力。
+- 网站表单不再提供创建自签名证书的选项；旧网站自签名证书保留，成功申请 Let’s Encrypt 后才切换。旧网站自签名仍不自动续期，建议切换为 Let’s Encrypt。后台 IP 自签名自动换新继续保留。
 
 域名证书位于 `/etc/minipanel/acme`，自签名网站证书位于 `/etc/minipanel/sites-ssl`。不接管系统已有的 `/etc/letsencrypt`。
 
@@ -87,7 +97,7 @@ sudo journalctl -u minipanel-renew.service -n 100 --no-pager
 
 ## 验证范围
 
-共 68 项自动测试：**65 项通过，3 项 Linux 原生文件系统测试在 Windows 跳过**。本地浏览器已验证复制粘贴和后台证书状态；证书签发、续期、加载失败回滚使用命令替身测试，尚未在真实 CA / Debian 服务器实测。真实 Debian 12/13 安装、升级、systemd、文件权限、公网 TLS 与 Nginx/PHP/MySQL 实际链路仍需实机验收。完整源码、测试、中文说明与验收清单均在安装包中。
+共 91 项自动测试：**88 项通过，3 项 Linux 原生文件系统测试在 Windows 跳过**。本地浏览器已检查会话恢复/重连、安装选项、PHP 扩展状态、网站伪静态与 SSL 表单、删除确认和 SQL 演示上传。SQL 导出响应及内容通过接口测试；浏览器下载完成事件在内置浏览器中未确认。SG、Nginx、MySQL、Certbot 系统行为使用命令替身测试；真实 Debian 安装、SG 加密程序运行与 SQL 执行仍需实机验收。安装包包含源码、测试和验收清单。
 
 ## 文件
 
@@ -96,3 +106,28 @@ sudo journalctl -u minipanel-renew.service -n 100 --no-pager
 - `minipanel.tar.gz`：Linux 安装包（含源码）。
 - `minipanel.zip`：相同内容的 ZIP 源码包。
 - `SHA256SUMS`：两个安装包的 SHA256 校验值。
+
+## PHP 扩展与 SourceGuardian
+
+新安装环境包含 OPcache、fileinfo、Redis、bcmath、intl、mysqli/PDO MySQL、curl、mbstring、XML、ZIP、GD。fileinfo 由 PHP common 提供；面板读取 **PHP-FPM** 模块状态，不用 CLI 状态代替网站运行环境。Debian 12 默认 PHP 8.2，Debian 13 默认 PHP 8.4，补丁版本随系统仓库更新。Redis 扩展是客户端，**不包含 Redis 服务端**。
+
+一键安装环境默认勾选“同时安装 SG / SourceGuardian Loader”，阅读并同意 Loader 使用条款后开始安装，也可取消 SG 选择。SG 从官方 HTTPS 下载，匹配 Debian amd64 的 PHP-FPM 8.2/8.4；验证文件类型及加载状态后重新加载 PHP-FPM，失败恢复原扩展配置。SG 安装失败时基础环境保留，可在设置页重试。已有加载成功的 SG 保留，暂不自动升级它或配置 CLI；加密程序仍须兼容当前 PHP 版本并具备自身授权。
+
+**旧服务器升级面板不会自动重装环境。** 升级后进入「面板设置」，点击「安装 / 补全常用扩展」；需要 SG 时点击「安装 SG / SourceGuardian」。安装会重新加载 PHP-FPM。模块旁的“已加载”表示检测到模块，不表示 Redis 服务端已启动或加密业务程序已验收。
+
+- [SourceGuardian 官方 Loader](https://www.sourceguardian.com/loaders.html)
+- [SourceGuardian Loader 使用条款](https://www.sourceguardian.com/termsloaders.html)
+
+## URL Rewrite、网站删除与数据库维护
+
+网站 → **URL Rewrite**：支持通用 PHP/Laravel、WordPress、纯静态模板，也可填写自定义 `rewrite` 和 `try_files`。规则放在 `location /` 内，每行一条、以分号结尾，最多 4096 字符、最多一条 `try_files`；暂不支持 `location` / `if` 块、花括号正则或行内注释。空白恢复默认 PHP 规则。保存时执行 `nginx -t`，失败保留原配置；暂停的网站也校验规则。修改根目录、开关 SSL/强制 HTTPS 和暂停恢复均保留规则。WordPress 模板不覆盖多站点等复杂配置。
+
+网站 → **删除**：删除面板记录与该域名 Nginx 配置，停止面板为该域名续期；网站文件、证书、数据库和 DNS 记录保留。需要继续使用时重新添加域名并指定原目录。域名删除后 Nginx 默认站点行为取决于其余配置，不保证旧域名一定无法连到服务器。
+
+数据库列表每行提供 **导出 SQL / 导入 SQL / 删除**：
+
+- 导出在服务器临时文件完成后才开始下载，不在内存组装整个备份；包含表、数据、触发器、存储过程和事件。`--single-transaction` 适合 InnoDB；导出期间不要执行 DDL，非事务表需要维护窗口或其他一致性备份办法。磁盘需能容纳临时 SQL，导出执行上限 30 分钟。
+- 导入接受未压缩 `.sql`，输入目标库名确认，完整上传后才执行 SQL。通过仅授权目标数据库的临时用户运行，禁止客户端 shell/source 指令和 LOCAL INFILE；不会以 MySQL root 执行上传的 SQL。含跨库操作、其他账号 DEFINER 或需要全局权限的语句会失败；含视图/过程/事件的跨账号备份可能需要由管理员用 SSH 审核处理，不能承诺任意备份一键恢复。
+- 导入可能覆盖或删除表，**先导出备份**。执行上限 30 分钟，失败可能已写入部分数据，不能自动回滚；连接中断后先检查结果，不要盲目再次导入。临时 SQL / 凭据正常清理；若临时账号清理失败会明确报出账号名。
+- 删除需输入完整数据库名，将删除整个数据库与同名面板账号，**无法撤销**。仅支持面板记录的数据库；部分删除失败会保留记录供检查重试。
+
