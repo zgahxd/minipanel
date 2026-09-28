@@ -1,14 +1,14 @@
-# MiniPanel v0.4.1
+# MiniPanel v0.5.0
 
 面向 Debian 12 / 13（amd64 / x86_64）的轻量中文服务器管理面板。
 
 - 直接安装到系统，通过 `https://服务器IP:8888` 登录后台。
 - 一键原生安装 Nginx、PHP-FPM、Oracle MySQL 8.4 LTS。
 - 域名可指定网站目录；已有网站可修改目录，保留原文件和 SSL 设置。
-- 文件管理从系统 `/` 浏览目录，支持路径跳转、返回、上一级、新建空文件/文件夹、上传下载、多选、解压、删除。
+- 文件管理从系统 `/` 浏览目录，支持路径跳转、返回、上一级、新建空文件/文件夹、上传下载、多选、复制粘贴、解压、删除。
 - 面板设置中修改管理员密码，验证原密码后保存，并退出所有旧登录。
 - 网站暂停/恢复、服务重启、安装日志、MySQL 数据库与独立账号。
-- 域名自签名 SSL、独立强制 HTTPS 开关；后台登录也使用 HTTPS。
+- 域名 Let’s Encrypt 申请与自动续期、独立强制 HTTPS；后台 IP 自签名证书自动换新。
 - PHP、Nginx 和面板文件传输不设固定文件大小上限。
 
 这是公开仓库，源码和安装包可直接下载，无需 GitHub 登录或 Token。
@@ -18,12 +18,18 @@
 在 Debian 12 / 13 amd64 的 **root 终端**执行：
 
 ```bash
-bash -c 'set -euo pipefail; [[ $EUID -eq 0 ]] || { echo "请使用 root 执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y curl ca-certificates; f=$(mktemp); trap '"'"'rm -f -- "$f"'"'"' EXIT; curl -fsSL --retry 3 --proto '"'"'=https'"'"' --proto-redir '"'"'=https'"'"' https://raw.githubusercontent.com/zgahxd/minipanel/main/install-online.sh -o "$f"; printf "%s  %s\n" "95a32c691c8e663bd307a748472050765a58ba6b50e9a4b6dba4de173e657ed9" "$f" | sha256sum --check --status; bash "$f"'
+bash -c 'set -euo pipefail; [[ $EUID -eq 0 ]] || { echo "请使用 root 执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y curl ca-certificates; f=$(mktemp); trap '"'"'rm -f -- "$f"'"'"' EXIT; curl -fsSL --retry 3 --proto '"'"'=https'"'"' --proto-redir '"'"'=https'"'"' https://raw.githubusercontent.com/zgahxd/minipanel/main/install-online.sh -o "$f"; printf "%s  %s\n" "9fec33ab0d493ca4d80b21bab63dfea00ddf47fbbfe41c9dcdf4ae181871d5f0" "$f" | sha256sum --check --status; bash "$f"'
 ```
 
-也可以复制 `one-line-install.txt`。命令通过 HTTPS 下载脚本并校验 SHA256，再下载固定的 **v0.4.1** 安装包并校验 SHA256。无需 GitHub CLI 或 Token。
+也可以复制 `one-line-install.txt`。命令通过 HTTPS 下载脚本并校验 SHA256，再下载固定的 **v0.5.0** 安装包并校验 SHA256。无需 GitHub CLI 或 Token。
 
 **已有服务器：直接执行同一命令升级，不需要重装系统。** 保留管理员密码、网站文件与记录、数据库数据与记录及现有证书。面板会短暂重启，需重新登录；安装脚本不重新安装 Nginx/PHP/MySQL，也不重写已有网站配置。无需重新添加网站。升级前请保存重要数据备份；上传、解压或安装任务进行中不要升级。
+
+## v0.5.0 更新
+
+- 域名可信证书申请、每日两次续期检查、续期后 Nginx 验证和加载、失败状态及重试。
+- 后台自签名证书剩余 30 天自动换新，设置页显示到期和检查结果，不替换外部证书。
+- 文件和文件夹跨目录复制粘贴，原文件保留，同名目标不覆盖。
 
 ## v0.4.1 更新
 
@@ -51,15 +57,37 @@ sudo python3 /opt/minipanel/reset-password.py
 
 网站目录操作使用 www-data，其余系统目录由 root 助手执行，适合单一可信管理员。符号链接、设备和运行时虚拟目录不开放访问；面板认证及内部文件受保护；系统关键目录、活动网站根目录及其上级目录不能删除。目录最多列出 5000 项，压缩包最多 10000 个条目。
 
+## 文件复制粘贴
+
+选中文件或文件夹 → **复制** → 进入任意允许访问的目标目录 → **粘贴到此目录**。可以把子目录中的文件复制到上级目录、其他网站或其他磁盘；目录会递归复制，原文件保留。同名目标拒绝覆盖，也不合并已有文件夹。复制在服务器内流式进行，无需下载到电脑再上传；目标网站仍按 www-data 权限操作。单项最多 10000 个条目、64 层、20 分钟；中途失败可能保留部分目标目录，页面显示已完成数量。暂不提供剪切移动，也不支持从电脑资源管理器直接 Ctrl+V 上传。
+
 ## SSL 与大文件
 
-域名 SSL 与后台 SSL 是独立设置。目前生成的是**自签名证书**，浏览器会显示不受信任提示；本版没有自动申请/续期 Let's Encrypt 证书。强制 HTTPS 可以单独开关，需先启用域名 SSL。
+网站与后台的证书独立管理：
+
+- **网站域名**：网站 → SSL 设置 → 选择「Let’s Encrypt」，填写邮箱并阅读/同意服务协议后保存。域名 A/AAAA 必须指向本机，公网 TCP 80 必须可达，HTTPS 放行 TCP 443。申请失败会保留原网站配置；已有自签名证书不会只因升级就自动变成可信证书，需要首次手动申请。
+- **域名自动续期**：安装启用 `minipanel-renew.timer`，每天 00:00、12:00（服务器时区）各检查一次，附加最多 1 小时随机延迟。Certbot 按其续期窗口决定是否签发，未到窗口不会重复签发。新证书通过 `nginx -t` 后自动重新加载；失败记录原因并重试。强制 HTTPS 与暂停网站均保留 HTTP 验证路径。
+- **后台 IP 自签名证书**：同一定时任务每天两次检查，剩余有效期不超过 30 天时换成新的 365 天证书，保留原 SAN 和私钥，重新加载后台。加载失败恢复原证书。浏览器仍会提示不受信任，新指纹会变化，后台会话可能需要重新登录。面板设置显示到期和检查结果；外部证书不自动覆盖。
+- 域名仍可选择自签名证书（365 天、浏览器有提示，此类网站自签名证书不自动续期）。后台自签名自动换新与网站 Let's Encrypt 自动续期是两项独立能力。
+
+域名证书位于 `/etc/minipanel/acme`，自签名网站证书位于 `/etc/minipanel/sites-ssl`。不接管系统已有的 `/etc/letsencrypt`。
+
+查看定时器与日志：
+
+```bash
+sudo systemctl list-timers minipanel-renew.timer
+sudo journalctl -u minipanel-renew.service -n 100 --no-pager
+```
+
+如需立即检查网站和后台证书，可在没有安装/文件任务运行时执行 `sudo systemctl start minipanel-renew.service`。后台页面的「检查域名证书续期」只检查域名，避免从后台任务中重新加载自身。定时任务失败 1 小时后重试；停机期间遗漏的定时检查在开机后补做。
+
+强制 HTTPS 可以单独开关，需先启用域名 SSL。
 
 文件采用流式传输，不在内存保存整个上传文件。实际大小仍受磁盘、网盘程序、浏览器、CDN 等限制；不支持断点续传。
 
 ## 验证范围
 
-共 46 项自动测试：**44 项通过，2 项 Linux 原生文件系统测试在 Windows 跳过**。本地浏览器流程已验证，用户试用确认后发布。真实 Debian 12/13 安装、升级、systemd、文件权限、公网 TLS 与 Nginx/PHP/MySQL 实际链路仍需实机验收。完整源码、测试、中文说明与验收清单均在安装包中。
+共 68 项自动测试：**65 项通过，3 项 Linux 原生文件系统测试在 Windows 跳过**。本地浏览器已验证复制粘贴和后台证书状态；证书签发、续期、加载失败回滚使用命令替身测试，尚未在真实 CA / Debian 服务器实测。真实 Debian 12/13 安装、升级、systemd、文件权限、公网 TLS 与 Nginx/PHP/MySQL 实际链路仍需实机验收。完整源码、测试、中文说明与验收清单均在安装包中。
 
 ## 文件
 
