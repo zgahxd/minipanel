@@ -1,0 +1,59 @@
+name: Backup runtime packages
+on:
+  workflow_dispatch:
+    inputs:
+      debian:
+        description: Debian version
+        type: choice
+        options: ['12', '13']
+        default: '12'
+      php:
+        description: PHP branch (7.4, 8.0 and 8.1 have ended upstream support)
+        type: choice
+        options: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
+        default: '8.2'
+permissions:
+  contents: read
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify and unpack panel source
+        run: |
+          sha256sum -c SHA256SUMS
+          mkdir source bundle
+          tar -xzf minipanel.tar.gz -C source
+      - name: Test on Debian and download signed repository packages
+        env:
+          DEBIAN_VERSION: ${{ inputs.debian }}
+          PHP_BRANCH: ${{ inputs.php }}
+        run: |
+          docker run --rm -e PHP_BRANCH -v "$PWD/source:/src:ro" -v "$PWD/bundle:/out" "debian:${DEBIAN_VERSION}" bash /src/minipanel/ci-backup.sh
+          sudo chown -R "$(id -u):$(id -g)" bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-debian${{ inputs.debian }}-php${{ inputs.php }}-${{ github.run_id }}
+          path: |
+            bundle/runtime-*.tar.gz
+            bundle/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
+  publish:
+    needs: backup
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: bundle
+          merge-multiple: true
+      - name: Publish package snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SNAPSHOT_TAG: runtime-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          gh release create "$SNAPSHOT_TAG" bundle/* --prerelease --title "Runtime package snapshot $SNAPSHOT_TAG" --notes "APT package snapshot with SHA256 and version manifest. Debian/PHP selection is recorded in the asset name. Does not contain website data, database contents, credentials or manually installed SourceGuardian binaries."
