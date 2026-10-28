@@ -1,4 +1,4 @@
-# MiniPanel v0.6.0
+# MiniPanel v0.7.0
 
 面向 Debian 12 / 13（amd64 / x86_64）的轻量中文服务器管理面板。
 
@@ -13,7 +13,34 @@
 
 这是公开仓库，源码和安装包可直接下载，无需 GitHub 登录或 Token。
 
-## v0.6.0 更新
+## v0.7.0 更新（预发布）
+
+- 文件管理新增 **压缩** 按钮：多选文件 / 文件夹，生成 ZIP 或 TAR.GZ，保留源文件、不覆盖同名目标。递归上限 10000 项、64 层、20 分钟；不包含符号链接或特殊文件。压缩归档统一文件权限为 0644、目录 0755，不用于完整系统备份。
+- 新增 **环境与安全更新**：每天从当前已配置签名 APT 源检查运行环境更新，在总览提示；点击检查 → 预览软件包及依赖 → 确认业务备份和维护时间 → 执行。计划有效 30 分钟，执行前核对安装状态及依赖，不直接降级，不自动安装补丁。APT 更新包含安全和常规修复，不是完整 CVE 扫描。
+- PHP 7.4 / 8.0–8.5 分支选择，按软件源实际提供的版本安装、多个分支并存；网站可单独切换 PHP。需要多版本时可明确启用 Sury 第三方签名源。PHP 7.4、8.0、8.1 已结束上游安全支持，不建议新站使用；第三方提供包不代表上游仍维护。
+- Nginx、MySQL、Redis 服务端可选择**已配置源中实际可用的包版本**。不提供已下架历史版本；不承诺任意版本组合。MySQL 初次环境安装仍为官方 8.4 LTS；跨系列提供人工迁移清单和数据库导出入口，**未实现自动跨系列迁移**，阻止原地替换和降级。
+- **Redis 服务端**可独立安装、启动 / 停止 / 重启及更新；新安装仅监听 127.0.0.1 / ::1。PHP Redis 扩展按 PHP 分支安装，客户端扩展不能替代缓存服务端。
+- PHP 常用扩展随该 PHP 分支安装；网站切换前对比面板已知扩展。SG 独立提供安装 / 更新入口，需确认官方条款；SG 不属于 APT 补丁检查范围，也不自动匹配漏洞公告。
+- 新增 APT 安装包备份脚本及 GitHub Actions 工作流模板。备份和版本清单只含安装软件包，不含网站内容、数据库数据、配置或登录凭据；手工安装的 SG 二进制不包含在 APT 备份中。
+
+### 更新与备份操作
+
+升级面板后到「环境与安全更新」操作。面板升级不会自行更新 PHP/Nginx/MySQL/Redis。更新软件包可能重启服务；失败可能已应用部分包，面板报告失败并保留记录，不会自动降级数据库。执行前做好服务器快照及业务数据备份，执行后验收网站和 SG 加密程序。
+
+```bash
+sudo systemctl list-timers minipanel-updates.timer
+sudo journalctl -u minipanel-updates.service -n 100 --no-pager
+# 下载本机全部已安装 APT 包的精确版本（含依赖）。目标必须是尚不存在的新目录。
+sudo bash /opt/minipanel/backup-packages.sh /root/minipanel-packages-snapshot
+```
+
+旧版本包若已从仓库下架，备份会失败并在 manifest.json 标记 complete=false；不能把不完整目录当成完整恢复包。SHA256SUMS 校验下载内容，原始 APT 签名验证仍由 APT 完成。恢复必须匹配 Debian 版本和架构，安装包不代替数据库 / 网站备份。
+
+将源码包中的 `backup-runtime.yml` 保存为仓库 `.github/workflows/backup-runtime.yml` 后，在 Actions → Backup runtime packages → Run workflow 选择 Debian/PHP 分支。工作流在 Debian 容器运行测试、从签名源下载 Nginx/MySQL 8.4/Redis/PHP 及依赖，然后发布单独的 runtime-* 预发布快照。每次运行备份一个选定组合；需要其他分支时分别运行。仅下载包，不验证完整 systemd 服务安装和业务运行。
+
+参考：[PHP 支持周期](https://www.php.net/supported-versions.php)、[PHP 已结束支持版本](https://www.php.net/eol.php)、[Debian 安全更新](https://www.debian.org/security/faq)、[Sury PHP 安装说明](https://packages.sury.org/php/README.txt)、[MySQL 升级路径](https://dev.mysql.com/doc/refman/8.4/en/upgrade-paths.html)。
+
+## v0.6.0 历史更新
 
 - 修复刷新时先闪现登录页面；会话检查失败显示重新连接，只有确认未登录时才显示登录表单。
 - 网站新增删除域名配置（保留网站目录、证书和数据库）；删除后停止面板为该域名续期。
@@ -28,10 +55,10 @@
 在 Debian 12 / 13 amd64 的 **root 终端**执行：
 
 ```bash
-bash -c 'set -euo pipefail; [[ $EUID -eq 0 ]] || { echo "请使用 root 执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y curl ca-certificates; f=$(mktemp); trap '"'"'rm -f -- "$f"'"'"' EXIT; curl -fsSL --retry 3 --proto '"'"'=https'"'"' --proto-redir '"'"'=https'"'"' https://raw.githubusercontent.com/zgahxd/minipanel/main/install-online.sh -o "$f"; printf "%s  %s\n" "f623a7fa54638039c9068ddddf819d0449fe5eec9da24b700d3fc47220d210f5" "$f" | sha256sum --check --status; bash "$f"'
+bash -c 'set -euo pipefail; [[ $EUID -eq 0 ]] || { echo "请使用 root 执行"; exit 1; }; source /etc/os-release; [[ ${ID:-} == debian && ${VERSION_ID:-} =~ ^(12|13)$ ]] || { echo "仅支持 Debian 12/13"; exit 1; }; apt-get update; apt-get install -y curl ca-certificates; f=$(mktemp); trap '"'"'rm -f -- "$f"'"'"' EXIT; curl -fsSL --retry 3 --proto '"'"'=https'"'"' --proto-redir '"'"'=https'"'"' https://raw.githubusercontent.com/zgahxd/minipanel/main/install-online.sh -o "$f"; printf "%s  %s\n" "5dbdc9dde068e994992644d6ec0c20f2aa820bb72ae5efbc6970b0ad1b4bb878" "$f" | sha256sum --check --status; bash "$f"'
 ```
 
-也可以复制 `one-line-install.txt`。命令通过 HTTPS 下载脚本并校验 SHA256，再下载固定的 **v0.6.0** 安装包并校验 SHA256。无需 GitHub CLI 或 Token。
+也可以复制 `one-line-install.txt`。命令通过 HTTPS 下载脚本并校验 SHA256，再下载固定的 **v0.7.0** 安装包并校验 SHA256。无需 GitHub CLI 或 Token。
 
 **已有服务器：直接执行同一命令升级，不需要重装系统。** 保留管理员密码、网站文件与记录、数据库数据与记录及现有证书。面板会短暂重启，需重新登录；安装脚本不重新安装 Nginx/PHP/MySQL，也不重写已有网站配置。无需重新添加网站。升级前请保存重要数据备份；上传、解压或安装任务进行中不要升级。
 
@@ -97,7 +124,7 @@ sudo journalctl -u minipanel-renew.service -n 100 --no-pager
 
 ## 验证范围
 
-共 91 项自动测试：**88 项通过，3 项 Linux 原生文件系统测试在 Windows 跳过**。本地浏览器已检查会话恢复/重连、安装选项、PHP 扩展状态、网站伪静态与 SSL 表单、删除确认和 SQL 演示上传。SQL 导出响应及内容通过接口测试；浏览器下载完成事件在内置浏览器中未确认。SG、Nginx、MySQL、Certbot 系统行为使用命令替身测试；真实 Debian 安装、SG 加密程序运行与 SQL 执行仍需实机验收。安装包包含源码、测试和验收清单。
+本地共 104 项自动测试：**100 项通过，4 项 Linux 原生文件系统测试在 Windows 跳过**。新增测试覆盖压缩内容、拒绝覆盖、认证及 CSRF、更新计划失效、依赖变化、降级和 MySQL 跨系列阻止、执行失败状态。真实 APT 安装与服务重启仍需 Debian 实机验收。本地浏览器已检查会话恢复/重连、安装选项、PHP 扩展状态、网站伪静态与 SSL 表单、删除确认和 SQL 演示上传。SQL 导出响应及内容通过接口测试；浏览器下载完成事件在内置浏览器中未确认。SG、Nginx、MySQL、Certbot 系统行为使用命令替身测试；真实 Debian 安装、SG 加密程序运行与 SQL 执行仍需实机验收。安装包包含源码、测试和验收清单。
 
 ## 文件
 
@@ -109,9 +136,9 @@ sudo journalctl -u minipanel-renew.service -n 100 --no-pager
 
 ## PHP 扩展与 SourceGuardian
 
-新安装环境包含 OPcache、fileinfo、Redis、bcmath、intl、mysqli/PDO MySQL、curl、mbstring、XML、ZIP、GD。fileinfo 由 PHP common 提供；面板读取 **PHP-FPM** 模块状态，不用 CLI 状态代替网站运行环境。Debian 12 默认 PHP 8.2，Debian 13 默认 PHP 8.4，补丁版本随系统仓库更新。Redis 扩展是客户端，**不包含 Redis 服务端**。
+新安装环境包含 OPcache、fileinfo、Redis、bcmath、intl、mysqli/PDO MySQL、curl、mbstring、XML、ZIP、GD。fileinfo 由 PHP common 提供；面板读取 **PHP-FPM** 模块状态，不用 CLI 状态代替网站运行环境。Debian 12 默认 PHP 8.2，Debian 13 默认 PHP 8.4，补丁版本随系统仓库更新。Redis 扩展是客户端；Redis 服务端在「环境与安全更新」单独安装管理。
 
-一键安装环境默认勾选“同时安装 SG / SourceGuardian Loader”，阅读并同意 Loader 使用条款后开始安装，也可取消 SG 选择。SG 从官方 HTTPS 下载，匹配 Debian amd64 的 PHP-FPM 8.2/8.4；验证文件类型及加载状态后重新加载 PHP-FPM，失败恢复原扩展配置。SG 安装失败时基础环境保留，可在设置页重试。已有加载成功的 SG 保留，暂不自动升级它或配置 CLI；加密程序仍须兼容当前 PHP 版本并具备自身授权。
+一键安装环境默认勾选“同时安装 SG / SourceGuardian Loader”，阅读并同意 Loader 使用条款后开始安装，也可取消 SG 选择。SG 从官方 HTTPS 下载，匹配 Debian amd64 的 PHP-FPM 7.4/8.0–8.5；验证文件类型及加载状态后重新加载 PHP-FPM，失败恢复原扩展配置。SG 安装失败时基础环境保留，可在设置页重试。已有加载成功的 SG 保留，可在环境管理中手动更新它，暂不配置 CLI；加密程序仍须兼容当前 PHP 版本并具备自身授权。
 
 **旧服务器升级面板不会自动重装环境。** 升级后进入「面板设置」，点击「安装 / 补全常用扩展」；需要 SG 时点击「安装 SG / SourceGuardian」。安装会重新加载 PHP-FPM。模块旁的“已加载”表示检测到模块，不表示 Redis 服务端已启动或加密业务程序已验收。
 
@@ -131,3 +158,17 @@ sudo journalctl -u minipanel-renew.service -n 100 --no-pager
 - 导入可能覆盖或删除表，**先导出备份**。执行上限 30 分钟，失败可能已写入部分数据，不能自动回滚；连接中断后先检查结果，不要盲目再次导入。临时 SQL / 凭据正常清理；若临时账号清理失败会明确报出账号名。
 - 删除需输入完整数据库名，将删除整个数据库与同名面板账号，**无法撤销**。仅支持面板记录的数据库；部分删除失败会保留记录供检查重试。
 
+
+## Debian 检查与安装包快照
+
+GitHub Actions 已在 Debian 12 / PHP 8.2、Debian 13 / PHP 8.4、Debian 12 / PHP 7.4 环境完成自动测试、Shell 语法检查、签名软件源解析、依赖下载与 SHA256 核验。测试使用 Debian 容器，不代表已完成真实 systemd 安装、服务切换或 SG 业务程序验收。
+
+- [Debian 12 / PHP 8.2 测试](https://github.com/zgahxd/minipanel/actions/runs/40631276883) · [软件包备份](https://github.com/zgahxd/minipanel/releases/tag/runtime-40631276883-1)
+- [Debian 13 / PHP 8.4 测试](https://github.com/zgahxd/minipanel/actions/runs/40631348378) · [软件包备份](https://github.com/zgahxd/minipanel/releases/tag/runtime-40631348378-1)
+- [Debian 12 / PHP 7.4 测试](https://github.com/zgahxd/minipanel/actions/runs/40632332505) · [软件包备份](https://github.com/zgahxd/minipanel/releases/tag/runtime-40632332505-1)
+
+备份包括所选 PHP 分支、常用扩展、Nginx、MySQL 8.4、Redis 和依赖，压缩包内有版本清单及逐包 SHA256。PHP 7.4 备份仅供旧程序兼容，不意味着恢复了上游安全维护。仓库已配置 Backup runtime packages 工作流，后续可手动选择分支生成新快照；备份快照不会自动用于生产服务器更新。
+
+PHP 8.5 已适配内置 OPcache，不再尝试安装独立 php8.5-opcache 包。参见 https://www.php.net/manual/en/migration85.incompatible.php 。
+
+修复后已通过 [Debian 13 / PHP 8.5 回归检查](https://github.com/zgahxd/minipanel/actions/runs/40633532443)，生成 [PHP 8.5 软件包备份](https://github.com/zgahxd/minipanel/releases/tag/runtime-40633532443-1)。最终源码本地 104 项测试，100 通过、4 项 Linux 专用测试跳过；Debian 13 容器中全部通过。
